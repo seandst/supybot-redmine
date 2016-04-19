@@ -3,6 +3,12 @@ Redmine plugin for Supybot/Limnoria
 
 This Supybot/Limnoria plugin allows to display informations about Redmine issues and direct links to them.
 
+This fork
+---------
+
+This fork  is customized to support the [Pulp Project](http://www.pulpproject.org) workflows,
+and custom fields. It is likely not generically useful.
+
 How to install
 --------------
 
@@ -30,8 +36,3 @@ How to use
 
 Once the plugin is loaded and (at least) urlbase and apikey are set, you can display informations about a Redmine issue with the "bug #" command, where # is the issue number.
 If you enable the bugSnarfer variable for a given channel, you won't need using the "bug" command anymore, just write "RM #", and the bot will automatically display informations about the issue.
-
-
-Update
-------
-Get latest version at : https://github.com/veggiematts/supybot-redmine
