@@ -56,14 +56,14 @@ class Redmine(callbacks.PluginRegexp):
         self.__parent = super(Redmine, self)
         self.__parent.__init__(irc)
 
-	self.saidBugs = ircutils.IrcDict()
+        self.saidBugs = ircutils.IrcDict()
         sayTimeout = self.registryValue('bugSnarferTimeout')
         for k in irc.state.channels.keys():
             self.saidBugs[k] = TimeoutQueue(sayTimeout)
-     
-	self.url = self.registryValue('urlbase')
-	self.auth = BasicAuth(self.registryValue('apikey'), str(random.random()))
-	self.resource = Resource(self.url, filters=[self.auth])
+
+        self.url = self.registryValue('urlbase')
+        self.auth = BasicAuth(self.registryValue('apikey'), str(random.random()))
+        self.resource = Resource(self.url, filters=[self.auth])
 
     def snarfBug(self, irc, msg, match):
         r"""\bRM\b[\s#]*(?P<id>\d+)"""
@@ -74,14 +74,14 @@ class Redmine(callbacks.PluginRegexp):
         ids = []
         self.log.debug('Snarfed ID(s): ' + ' '.join(id_matches))
 
-	# Check if the bug has been already snarfed in the last X seconds
+        # Check if the bug has been already snarfed in the last X seconds
         for id in id_matches:
             should_say = self._shouldSayBug(id, channel)
             if should_say:
                 ids.append(id)
         if not ids: return
 
-	strings = self.getBugs(ids)
+        strings = self.getBugs(ids)
         for s in strings:
             irc.reply(s, prefixNick=False)
 
@@ -101,44 +101,79 @@ class Redmine(callbacks.PluginRegexp):
 
 
     def getBugs(self, ids):
-	strings = [];
+        strings = [];
         for id in ids:
+            # Getting response
+            try:
+                response = self.resource.get('/issues/' + str(id) + '.json')
+                data = response.body_string()
+                result = json.loads(data)
 
-	    # Getting response
-	    try:
-		response = self.resource.get('/issues/' + str(id) + '.json')
-		data = response.body_string() 
-		result = json.loads(data)
-		
-		# Formatting reply
-		bugmsg = self.registryValue('bugMsgFormat')
-		#self.log.info("info " + bugmsg);
-		bugmsg = bugmsg.replace('_ID_', "%s" % id)
-		bugmsg = bugmsg.replace('_AUTHOR_', result['issue']['author']['name'])
-		bugmsg = bugmsg.replace('_SUBJECT_', result['issue']['subject'])
-		bugmsg = bugmsg.replace('_STATUS_', result['issue']['status']['name'])
-		bugmsg = bugmsg.replace('_PROJECT_', result['issue']['project']['name'])
-		try:
-		    bugmsg = bugmsg.replace('_CATEGORY_', result['issue']['category']['name'])
-		except Exception:
-		    bugmsg = bugmsg.replace('_CATEGORY_', 'uncategorized')
-		bugmsg = bugmsg.replace('_URL_', "%s/issues/%s" % (self.url, id))
-		bugmsg = bugmsg.split('_CRLF_')
+                #self.log.info("info " + bugmsg);
+                issue = result['issue']
+                issue_url = "%s/issues/%s" % (self.url, id)
+                if 'is_private' in issue and issue['is_private']:
+                    # private issue, short out
+                    return [
+                        'Issue #%s is private and must be viewed in Redmine' % str(id),
+                        issue_url
+                    ]
 
-		for msg in bugmsg:
-		    strings.append(msg)
+                # Formatting reply
+                bugmsg = self.registryValue('bugMsgFormat')
+                bugmsg = bugmsg.replace('_ID_', "%s" % id)
+                bugmsg = bugmsg.replace('_SUBJECT_', "%s" % issue['subject'])
+                for field, value in result['issue'].items():
+                    replace_str = '_%s_' % field.upper()
+                    if isinstance(value, dict):
+                        if 'name' in value:
+                            bugmsg = bugmsg.replace(replace_str, value['name'])
+                        else:
+                            bugmsg = bugmsg.replace(replace_str, 'None')
 
-	    except RequestError as e:
-		strings.append("An error occured when trying to query Redmine: " + str(e))
+                if 'custom_fields' in issue:
+                    for custom_field in issue['custom_fields']:
+                        if 'multiple' in custom_field:
+                            # multiple value fields aren't supported (yet?)
+                            continue
+                        value = None
+                        replace_str = '_%s_' % custom_field['name'].replace(' ', '').upper()
+                        # silly custom handling for pulp fields
+                        if custom_field['name'].lower() == 'severity':
+                            # format is 0. severity, so split and take index 1
+                            value = ' | Severity: %s' % custom_field['value'].split()[1]
+                        elif custom_field['name'].lower() == 'target platform release':
+                            # field is required, skip it if no value
+                            if custom_field['value']:
+                                value = ' | Target Release: %s' % custom_field['value']
+                        elif not custom_field['value']:
+                            value = 'None'
+                        else:
+                            value = custom_field['value']
+                        if value is not None:
+                            bugmsg = bugmsg.replace(replace_str, value)
+                bugmsg = bugmsg.replace('_URL_', "%s/issues/%s" % (self.url, id))
+                bugmsg = bugmsg.replace('_ASSIGNED_TO_', 'unassigned')
+                # more silly custom handling for pulp fields that weren't replaced above
+                bugmsg = bugmsg.replace('_SEVERITY_', '')
+                bugmsg = bugmsg.replace('_TARGETPLATFORMRELEASE_', '')
+                bugmsg = bugmsg.split('_CRLF_')
+
+
+                for msg in bugmsg:
+                    strings.append(msg)
+
+            except RequestError as e:
+                strings.append("An error occured when trying to query Redmine: " + str(e))
 
         return strings
 
 
     def bug(self, irc, msg, args, bugNumber):
         """
-	<bug number>
-        
-	Expand bug # to a full URI
+        <bug number>
+
+        Expand bug # to a full URI
         """
         strings = self.getBugs( [ bugNumber ] )
 
