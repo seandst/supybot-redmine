@@ -63,7 +63,7 @@ class PulpRedmine(callbacks.PluginRegexp):
 
         self.url = self.registryValue('urlbase')
         self.auth = BasicAuth(self.registryValue('apikey'), str(random.random()))
-        self.resource = Resource(self.url, filters=[self.auth])
+        self.resource = Resource(self.url, filters=[self.auth], follow_redirect=True)
 
     def snarfBug(self, irc, msg, match):
         r"""\bRM\b[\s#]*(?P<id>\d+)"""
@@ -106,8 +106,15 @@ class PulpRedmine(callbacks.PluginRegexp):
             # Getting response
             try:
                 response = self.resource.get('/issues/' + str(id) + '.json')
+                if response.status_int not in [200, 404]:
+                    self.log.info('Redmine responded with unexpected code %d' % response.status_int)
                 data = response.body_string()
-                result = json.loads(data)
+                try:
+                    result = json.loads(data)
+                except json.JSONDecodeError:
+                    self.log.error('Unable to parse redmine data:')
+                    self.log.error(data)
+                    raise
 
                 #self.log.info("info " + bugmsg);
                 issue = result['issue']
