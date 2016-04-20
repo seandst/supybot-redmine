@@ -38,39 +38,44 @@ def configure(advanced):
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
     from supybot.questions import expect, anything, something, yn
-    conf.registerPlugin('Redmine', True)
+    conf.registerPlugin('PulpRedmine', True)
 
 
-Redmine = conf.registerPlugin('Redmine')
+PulpRedmine = conf.registerPlugin('PulpRedmine')
 
-conf.registerChannelValue(Redmine, 'bugSnarfer',
+conf.registerChannelValue(PulpRedmine, 'bugSnarfer',
     registry.Boolean(False, """Determines whether the bug snarfer will be
     enabled, such that any RM ### seen in the channel
     will have its information reported into the channel."""))
 
-conf.registerGlobalValue(Redmine, 'bugSnarferTimeout',
+conf.registerGlobalValue(PulpRedmine, 'bugSnarferTimeout',
     registry.PositiveInteger(300, 
     """Users often say "RM XXX" several times in a row, in a channel.
     If "RM XXX" has been said in the last (this many) seconds, don't
     fetch its data again. If you change the value of this variable, you
     must reload this plugin for the change to take effect."""))
 
-conf.registerGlobalValue(Redmine, 'urlbase',
-    registry.String('http://www.redmine.org', 
-    """The base URL for the Redmine instance this plugin will retrieve
+conf.registerGlobalValue(PulpRedmine, 'urlbase',
+    registry.String('http://pulp.plan.io', 
+    """The base URL for the Pulp Redmine instance this plugin will retrieve
     bug informations from."""))
 
-conf.registerGlobalValue(Redmine, 'bugMsgFormat',
-    registry.String('RM _ID_ - _AUTHOR_ - _STATUS_ - _SUBJECT__CRLF__URL_',
-    """Change the message format for bug details, following tokens will 
-    be replaced before being printed: _ID_, _URL_, _AUTHOR_, 
-    _CATEGORY_, _SUBJECT_, _STATUS_, _PROJECT_ .
+conf.registerGlobalValue(PulpRedmine, 'bugMsgFormat',
+    registry.String('_TRACKER_ #_ID_ [_STATUS_] (_ASSIGNED_TO_) - '
+    'Priority: _PRIORITY__SEVERITY__TARGETPLATFORMRELEASE__CRLF_'
+    '_SUBJECT_ - _URL_',
+    """Change the message format for bug details. Field (and custom field)
+    name tokens should be replaced, where the field name token is the field
+    name in all uppercase with spaces removed. e.g. "field-name" will become
+    _FIELD-NAME_, "Field Name" will become _FIELDNAME_, and "field_name"
+    will become _FIELD_NAME_.
     _CRLF_ will split the response in two (or more) lines."""))
+    
 
 
-conf.registerGlobalValue(Redmine, 'apikey',
-    registry.String('', """Your Redmine API key. The Rest API must be enabled
-    in Redmine (Administration -> Settings -> Authentication). You can then get
+conf.registerGlobalValue(PulpRedmine, 'apikey',
+    registry.String('', """Your Pulp Redmine API key. The Rest API must be enabled
+    in Pulp Redmine (Administration -> Settings -> Authentication). You can then get
     your API Key on your account page ( /my/account ) when logged in, on the
     right-hand pane of the default layout.""",
                     private=True))

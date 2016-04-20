@@ -43,9 +43,9 @@ import random
 
 
 
-class Redmine(callbacks.PluginRegexp):
+class PulpRedmine(callbacks.PluginRegexp):
     """
-    Displays informations about a Redmine issue.
+    Displays pulp-specific information about a Redmine issue.
     """
     threaded = True
     unaddressedRegexps = ['snarfBug']
@@ -53,7 +53,7 @@ class Redmine(callbacks.PluginRegexp):
 
     def __init__(self, irc):
 
-        self.__parent = super(Redmine, self)
+        self.__parent = super(PulpRedmine, self)
         self.__parent.__init__(irc)
 
         self.saidBugs = ircutils.IrcDict()
@@ -187,7 +187,7 @@ class Redmine(callbacks.PluginRegexp):
 
 
 
-Class = Redmine
+Class = PulpRedmine
 
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:
