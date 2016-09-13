@@ -139,29 +139,44 @@ class PulpRedmine(callbacks.PluginRegexp):
                             bugmsg = bugmsg.replace(replace_str, 'None')
 
                 if 'custom_fields' in issue:
+                    # silly custom handling for pulp fields
                     for custom_field in issue['custom_fields']:
                         if 'multiple' in custom_field:
                             # multiple value fields aren't supported (yet?)
                             continue
-                        value = None
-                        replace_str = '_%s_' % custom_field['name'].replace(' ', '').upper()
-                        # silly custom handling for pulp fields
-                        if custom_field['name'].lower() == 'severity':
-                            # format is 0. severity, so split and take index 1
-                            value = ' | Severity: %s' % custom_field['value'].split()[1]
-                        elif custom_field['name'].lower() == 'target platform release':
-                            # field is required, skip it if no value
-                            if custom_field['value']:
-                                value = ' | Target Release: %s' % custom_field['value']
-                        elif not custom_field['value']:
+                        field_name = custom_field.get('name', None)
+                        field_value = custom_field.get('value', '')
+
+                        # if the field has no name, skip it
+                        if field_name is None:
+                            continue
+
+                        replace_str = '_%s_' % field_name.replace(' ', '').upper()
+                        # if the string to replace with the field value isn't
+                        # in the output msg, skip it
+                        if replace_str not in bugmsg:
+                            continue
+
+                        if field_name.lower() == 'severity':
+                            # value format is 0. severity, so split and take index 1
+                            value = ' | Severity: %s' % field_value.split()[1]
+                        elif field_name.lower() == 'target platform release':
+                            # target release not required, skip it if no value
+                            if field_value:
+                                value = ' | Target Release: %s' % field_value
+                        elif not field_value:
                             value = 'None'
                         else:
-                            value = custom_field['value']
-                        if value is not None:
+                            value = field_value
+                        if value:
                             bugmsg = bugmsg.replace(replace_str, value)
                 bugmsg = bugmsg.replace('_URL_', "%s/issues/%s" % (self.url, id))
                 bugmsg = bugmsg.replace('_ASSIGNED_TO_', 'unassigned')
+
                 # more silly custom handling for pulp fields that weren't replaced above
+                # This should be handled with a regex, e.g. replace anything
+                # that looks like _UPPER_CASE_ should be replaced with "not set",
+                # or some other useful value
                 bugmsg = bugmsg.replace('_SEVERITY_', '')
                 bugmsg = bugmsg.replace('_TARGETPLATFORMRELEASE_', '')
                 bugmsg = bugmsg.split('_CRLF_')
